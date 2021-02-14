@@ -5,13 +5,13 @@ import video_model
 import user_model as um
 import pickle as pkl
 
-with open('vid_embed', 'rb') as f:
+with open('../recommendation/vid_embed', 'rb') as f:
     video_embeddings = pkl.load(f) #need to load a dictionary mapping video-id to embedding
 
-with open('vid_idx', 'rb') as e:
+with open('../recommendation/vid_idx', 'rb') as e:
     vid_id_to_idx = pkl.load(e)
 
-user_model = torch.load('embed_model.pth')
+user_model = torch.load('../recommendation/embed_model.pth')
 
 '''
 Takes survey_results(from initial user survey), affinities for videos, the video_ids 

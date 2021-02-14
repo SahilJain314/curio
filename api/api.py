@@ -3,8 +3,14 @@ from flask import Flask, redirect, session, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
+import numpy as np
 import requests
 import flask
+import sys
+
+sys.path.insert(1, '../recommendation')
+
+from inference import inference
 
 import google.oauth2.credentials
 import google_auth_oauthlib.flow
@@ -91,7 +97,7 @@ class UserLearningPreference(db.Model):
 
   @staticmethod
   def get_by_user(user_id):
-      return User.query.get(id)
+      return UserLearningPreference.query.filter_by(user_id=user_id).order_by(UserLearningPreference.question_number).all()
 
   @staticmethod
   def create(user, question_number, answer_choice):
@@ -176,7 +182,7 @@ class UserVideoInteraction(db.Model):
 
   @staticmethod
   def create(user, video, affinity):
-        new_interaction = UserVideoInteraction(video=video, affinity=affinity)
+        new_interaction = UserVideoInteraction(user=user, video=video, affinity=affinity)
         db.session.add(new_interaction)
         db.session.commit()
 
@@ -219,11 +225,35 @@ def get_video(topic_id):
     info = client.userinfo().get().execute()
 
     current_user = User.get_by_gid(info['id'])
-    print(Topic.query.get(topic_id))
     current_user.most_recent_topic = Topic.query.get(topic_id)
     db.session.commit()
 
-    response = flask.make_response({'id' : 'dmb1i4oN5oE'})
+    prefs = UserLearningPreference.get_by_user(current_user.id)
+
+    converted = []
+
+    for pref in prefs:
+      if pref.answer_choice == 0:
+        converted += [1, 0, 0]
+      elif pref.answer_choice == 1:
+        converted += [0, 1, 0]
+      else:
+        converted += [0, 0, 1]
+
+    interactions = UserVideoInteraction.query.filter_by(user_id=current_user.id).all()
+
+    affinities = []
+    videos = []
+
+    for i in interactions:
+      affinities.append(i.affinity)
+      videos.append(Video.query.get(i.video_id).url)
+
+    possible_videos = Video.query.filter_by(topic=current_user.most_recent_topic).all()
+
+    best_id = inference(np.array(converted), np.array(affinities), videos, possible_videos, 0)
+
+    response = flask.make_response({'id' : best_id})
     response.headers['Access-Control-Allow-Credentials'] = 'true'
 
     return response
