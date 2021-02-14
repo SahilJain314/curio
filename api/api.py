@@ -178,16 +178,12 @@ class UserVideoInteraction(db.Model):
 
 @app.route('/interaction', methods=['POST'])
 def mark_interaction():
-  print('hello!')
   if 'credentials' not in flask.session:
-    print('Nope!')
     response = flask.make_response({})
     response.headers['Access-Control-Allow-Credentials'] = 'true'
     return response
   
-  stuff = request.get_json()
-  print('Hello!')
-  print(stuff)
+  print(request.form['affinity'])
 
   credentials = google.oauth2.credentials.Credentials(
       **flask.session['credentials'])
@@ -197,7 +193,7 @@ def mark_interaction():
 
   current_user = User.get_by_gid(info['id'])
 
-  response = flask.make_response({})
+  response = flask.make_response('Success!')
   response.headers['Access-Control-Allow-Credentials'] = 'true'
 
   return response

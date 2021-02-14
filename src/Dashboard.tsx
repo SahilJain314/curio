@@ -51,16 +51,14 @@ const Dashboard = (props: DashboardProps) => {
     function recordAffinity() {
         const affinity = (parseFloat(effectiveness) + parseFloat(preference)) / 2;
 
+        let formData = new FormData();
+        formData.append('affinity', affinity.toString());
+        formData.append('video', video);
+
         fetch('http://localhost:5000/interaction', {
             credentials: 'include',
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                affinity,
-                video,
-            })
+            body: formData
         })
     }
 
