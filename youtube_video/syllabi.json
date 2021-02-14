@@ -1,0 +1,17 @@
+{
+    "data structures": [
+        "list",
+        "trees",
+        "stacks",
+        "queues",
+        "binary search trees",
+        "avl tree",
+        "disjoint sets",
+        "kd-trees",
+        "b-trees",
+        "heaps",
+        "hash map",
+        "graphs",
+        "minimum spanning tree"
+    ]
+}
