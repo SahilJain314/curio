@@ -54,7 +54,7 @@ Returns feature vector for user
 def make_person_feature_vec(survey_results, affinities, video_ids, video_embeddings, vid_id_to_idx):
     sum_vid_embed = torch.zeros((1, 10), requires_grad = False)
     for v in video_ids:
-        sum_vid_embed += v
+        sum_vid_embed += video_embeddings[vid_id_to_idx[v]]
     explicit = torch.tensor(survey_results)
     sum_vid_embed = sum_vid_embed / len(video_ids)
     return torch.cat((explicit.detach().reshape(1, explicit.shape[1]), sum_vid_embed.detach()), dim=1)
