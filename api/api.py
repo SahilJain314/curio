@@ -158,6 +158,10 @@ class Video(db.Model):
         new_video = Video(topic=topic, url=url)
         db.session.add(new_video)
         db.session.commit()
+    
+  @staticmethod
+  def get_by_url(url):
+    return Video.query.filter_by(url=url).first()
 
 class UserVideoInteraction(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -172,8 +176,8 @@ class UserVideoInteraction(db.Model):
 
   @staticmethod
   def create(user, video, affinity):
-        new_video = Video(topic=topic, url=url)
-        db.session.add(new_video)
+        new_interaction = UserVideoInteraction(video=video, affinity=affinity)
+        db.session.add(new_interaction)
         db.session.commit()
 
 @app.route('/interaction', methods=['POST'])
@@ -192,6 +196,10 @@ def mark_interaction():
   info = client.userinfo().get().execute()
 
   current_user = User.get_by_gid(info['id'])
+
+  vid = Video.get_by_url(request.form['video'])
+
+  UserVideoInteraction.create(current_user, vid, float(request.form['affinity']))
 
   response = flask.make_response('Success!')
   response.headers['Access-Control-Allow-Credentials'] = 'true'
