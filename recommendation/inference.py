@@ -52,9 +52,9 @@ def cosine_sim(v, s):
 Returns feature vector for user
 '''
 def make_person_feature_vec(survey_results, affinities, video_ids, video_embeddings, vid_id_to_idx):
-    out_vec = torch.zeros((survey_results.shape[0] + video_embeddings[video_ids[0]].shape[0], 1), requires_grad=False)
-    out_vec[0 : survey_results.shape[0]] = survey_results
-    for video in video_ids:
-        out_vec[survey_results.shape[0]:] += video_embeddings[video]
-
-    return out_vec
+    sum_vid_embed = torch.zeros((1, 10), requires_grad = False)
+    for v in video_ids:
+        sum_vid_embed += v
+    explicit = torch.tensor(survey_results)
+    sum_vid_embed = sum_vid_embed / len(video_ids)
+    return torch.cat((explicit.detach().reshape(1, explicit.shape[1]), sum_vid_embed.detach()), dim=1)
