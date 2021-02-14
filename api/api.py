@@ -249,9 +249,13 @@ def get_video(topic_id):
       affinities.append(i.affinity)
       videos.append(Video.query.get(i.video_id).url)
 
+    print(videos)
+
     possible_videos = Video.query.filter_by(topic=current_user.most_recent_topic).all()
 
-    best_id = inference(np.array(converted), np.array(affinities), videos, possible_videos, 0)
+    ids = [i.url for i in possible_videos]
+
+    best_id = inference(np.array(converted), np.array(affinities), videos, ids, 0)
 
     response = flask.make_response({'id' : best_id})
     response.headers['Access-Control-Allow-Credentials'] = 'true'

@@ -57,4 +57,4 @@ def make_person_feature_vec(survey_results, affinities, video_ids, video_embeddi
         sum_vid_embed += video_embeddings[vid_id_to_idx[v]]
     explicit = torch.tensor(survey_results)
     sum_vid_embed = sum_vid_embed / len(video_ids)
-    return torch.cat((explicit.detach().reshape(1, explicit.shape[1]), sum_vid_embed.detach()), dim=1)
+    return torch.cat((explicit.detach().reshape(1, explicit.shape[0]), sum_vid_embed.detach()), dim=1)
