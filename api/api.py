@@ -1,5 +1,5 @@
 import time
-from flask import Flask, redirect, session, jsonify
+from flask import Flask, redirect, session, jsonify, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_cors import CORS
 import os
@@ -26,13 +26,35 @@ class User(db.Model):
     name = db.Column(db.Text, unique=True, nullable=False)
     email = db.Column(db.Text, unique=True, nullable=False)
     profile_pic = db.Column(db.Text, unique=False, nullable=False)
+    
+    most_recent_syllabus_id = db.Column(db.Integer, db.ForeignKey('syllabus.id'), nullable=True)
+    most_recent_syllabus = db.relationship('Syllabus', backref=db.backref('users', lazy=True))
+    most_recent_topic_id = db.Column(db.Integer, db.ForeignKey('topic.id'), nullable=True)
+    most_recent_topic = db.relationship('Topic', backref=db.backref('users', lazy=True))
 
     def __repr__(self):
         return '<User %r>' % self.email
 
+    def to_dict(self):
+      syllabus = None
+      if self.most_recent_syllabus is not None:
+        syllabus = self.most_recent_syllabus.to_dict()
+
+      topic = None
+      if self.most_recent_topic is not None:
+        topic = self.most_recent_topic.to_dict()
+
+      return {'id': self.id,
+      'name': self.name,
+      'email': self.email,
+      'profile_pic': self.profile_pic,
+      'most_recent_syllabus': syllabus,
+      'most_recent_topic': topic
+      }
+
     @staticmethod
     def create(gid, name, email, profile_pic):
-        new_user = User(gid=gid, name=name, email=email, profile_pic=profile_pic)
+        new_user = User(gid=gid, name=name, email=email, profile_pic=profile_pic, most_recent_syllabus=None, most_recent_topic=None)
         db.session.add(new_user)
         db.session.commit()
 
@@ -41,12 +63,13 @@ class User(db.Model):
       return User.query.get(id)
 
     @staticmethod
-    def exists(gid):
-      return User.query.filter_by(gid=gid).first() is None
+    def get_by_gid(gid):
+      return User.query.filter_by(gid=gid).first()
 
-@app.route('/time')
-def get_current_time():
-    return {'time': time.time()}
+    @staticmethod
+    def exists(gid):
+      user = User.query.filter_by(gid=gid).first()
+      return user is not None
 
 class UserLearningPreference(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -56,7 +79,15 @@ class UserLearningPreference(db.Model):
   answer_choice = db.Column(db.Integer, nullable=False)
 
   def __repr__(self):
-        return '<UserLearningPreference %r %r>' % self.user_id, self.question_number
+        return f'<UserLearningPreference {self.user_id} {self.question_number}>'
+
+  def to_dict(self):
+    return {
+      'id': self.id,
+      'user': self.user.to_dict(),
+      'question_number': self.question_number,
+      'answer_choice': self.answer_choice
+    }
 
   @staticmethod
   def get_by_user(user_id):
@@ -68,18 +99,28 @@ class UserLearningPreference(db.Model):
         db.session.add(new_preferences)
         db.session.commit()
 
-class Syballus(db.Model):
+class Syllabus(db.Model):
   id = db.Column(db.Integer, primary_key=True)
   subject = db.Column(db.Text, unique=True, nullable=False)
 
   def __repr__(self):
-        return '<Syballus %r>' % self.subject
+        return '<Syllabus %r>' % self.subject
+
+  def to_dict(self):
+    return {
+      'id': self.id,
+      'subject': self.subject
+    }
 
   @staticmethod
   def create(subject):
-        new_syllabus = Syballus(subject=subject)
+        new_syllabus = Syllabus(subject=subject)
         db.session.add(new_syllabus)
         db.session.commit()
+
+  @staticmethod
+  def get(id):
+    return Syllabus.query.get(id)
 
 class Topic(db.Model):
   id = db.Column(db.Integer, primary_key=True)
@@ -89,6 +130,13 @@ class Topic(db.Model):
 
   def __repr__(self):
         return '<Topic %r>' % self.name
+
+  def to_dict(self):
+    return {
+      'id': self.id,
+      'syllabus': self.syllabus.to_dict(),
+      'name': self.name
+    }
 
   @staticmethod
   def create(syllabus, name):
@@ -122,14 +170,134 @@ class UserVideoInteraction(db.Model):
   def __repr__(self):
       return '<Video %r>' % self.url
 
-  @
-
   @staticmethod
   def create(user, video, affinity):
         new_video = Video(topic=topic, url=url)
         db.session.add(new_video)
         db.session.commit()
+
+@app.route('/interaction', methods=['POST'])
+def mark_interaction():
+  print('hello!')
+  if 'credentials' not in flask.session:
+    print('Nope!')
+    response = flask.make_response({})
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
   
+  stuff = request.get_json()
+  print('Hello!')
+  print(stuff)
+
+  credentials = google.oauth2.credentials.Credentials(
+      **flask.session['credentials'])
+  client = googleapiclient.discovery.build('oauth2', 'v2', credentials=credentials)
+
+  info = client.userinfo().get().execute()
+
+  current_user = User.get_by_gid(info['id'])
+
+  response = flask.make_response({})
+  response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+  return response
+
+@app.route('/video/<int:topic_id>')
+def get_video(topic_id):
+    if 'credentials' not in flask.session:
+      response = flask.make_response({})
+      response.headers['Access-Control-Allow-Credentials'] = 'true'
+      return response
+
+    credentials = google.oauth2.credentials.Credentials(
+      **flask.session['credentials'])
+    client = googleapiclient.discovery.build('oauth2', 'v2', credentials=credentials)
+    info = client.userinfo().get().execute()
+
+    current_user = User.get_by_gid(info['id'])
+    print(Topic.query.get(topic_id))
+    current_user.most_recent_topic = Topic.query.get(topic_id)
+    db.session.commit()
+
+    response = flask.make_response({'id' : 'dmb1i4oN5oE'})
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+    return response
+    
+
+
+@app.route('/topic/<int:syllabus_id>')
+def get_topics(syllabus_id):
+  result = Topic.query.filter_by(syllabus_id=syllabus_id).all()
+
+  response = flask.make_response(jsonify([i.to_dict() for i in result]))
+  response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+  return response
+
+@app.route('/syllabus')
+def get_syllabi():
+  result = Syllabus.query.all()
+
+  response = flask.make_response(jsonify([i.to_dict() for i in result]))
+  response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+  return response
+
+@app.route('/surveyrespond', methods=['POST'])
+def set_survey_response():
+  if 'credentials' not in flask.session:
+    response = flask.make_response('You must be logged in!')
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+  
+  if len(request.form) != 20:
+    return 'Invalid survey, not all items were entered.'
+  
+
+  credentials = google.oauth2.credentials.Credentials(
+      **flask.session['credentials'])
+  client = googleapiclient.discovery.build('oauth2', 'v2', credentials=credentials)
+
+  info = client.userinfo().get().execute()
+
+  current_user = User.get_by_gid(info['id'])
+
+  for question, answer in request.form.items():
+    print(question)
+    print(answer)
+    UserLearningPreference.create(current_user, int(question[1:]), int(answer))
+
+  response = flask.make_response(redirect('http://localhost:3000/'))
+  response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+  return response
+
+
+@app.route('/surveyresponses')
+def get_survey_responses():
+  if 'credentials' not in flask.session:
+    response = flask.make_response({})
+    response.headers['Access-Control-Allow-Credentials'] = 'true'
+    return response
+
+  credentials = google.oauth2.credentials.Credentials(
+      **flask.session['credentials'])
+  client = googleapiclient.discovery.build('oauth2', 'v2', credentials=credentials)
+
+  info = client.userinfo().get().execute()
+
+  current_user = User.get_by_gid(info['id'])
+
+  survey_responses = UserLearningPreference.query.filter_by(user=current_user).order_by(UserLearningPreference.question_number).all()
+
+  response = flask.make_response(jsonify([i.to_dict() for i in survey_responses]))
+  response.headers['Access-Control-Allow-Credentials'] = 'true'
+
+  return response
+  
+
+# Authentication Routes 
 CLIENT_SECRETS_FILE = "../client_secret.json"
 
 SCOPES = ['https://www.googleapis.com/auth/userinfo.email', 'https://www.googleapis.com/auth/userinfo.profile', 'openid']
@@ -153,7 +321,9 @@ def get_user_info():
 
   info = client.userinfo().get().execute()
 
-  response = flask.make_response(info)
+  user = User.get_by_gid(info['id'])
+
+  response = flask.make_response(user.to_dict())
   response.headers['Access-Control-Allow-Credentials'] = 'true'
 
   return response
@@ -182,7 +352,7 @@ def authorize():
   flask.session.permanent = True
   flask.session['state'] = state
 
-  return flask.redirect(authorization_url)
+  return redirect(authorization_url)
 
 
 @app.route('/oauth2callback')

@@ -1,0 +1,58 @@
+.learning-window {
+    height: 100vh;
+    width: 100vw;
+    background-color: #1F2833;
+}
+.sidebar {
+    background-color: #C5C6C7;
+    height: 100%;
+    width: 30%;
+    float: left;
+}
+.sidebar > h2 {
+    margin-top: 0px;
+}
+.topic-list {
+    list-style: none;
+    text-align: left;
+}
+.topic-list > li {
+    text-transform: capitalize;
+    font-size: 20px;
+}
+.topic-list > li:hover {
+    color: #66FCF1;
+    cursor: pointer;
+}
+#current-topic {
+    text-decoration: underline;
+}
+.learning-window > iframe {
+    margin-top: 10px;
+}
+.video-viewer {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    height: 100%;
+    color: white;
+}
+.video-viewer button {
+    font-size: 16px;
+    padding: 10px;
+    margin: 5px;
+    border-radius: 4px;
+    font-family: inherit;
+    color: white;
+    background-color: transparent;
+    border: 2px solid #45A29E;
+    transition: 0.4s all;
+    box-shadow: none;
+    backface-visibility: hidden;
+}
+.video-viewer button:hover {
+    cursor: pointer;
+    transform: scale(1.1);
+    backface-visibility: hidden;
+}
