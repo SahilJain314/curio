@@ -22,7 +22,7 @@ def inference(survey_results, affinities, video_ids, candidates, n):
     p_vec = make_person_feature_vec(survey_results, affinities, video_ids, video_embeddings, vid_id_to_idx)
     
     p_embed = user_model(p_vec)
-    candidate_embeddings = [video_embeddings[vid_id_to_idx[c]] for c in candidates]
+    candidate_embeddings = [video_embeddings[vid_id_to_idx[c]].reshape((1, 10)) for c in candidates]
 
     nearest_idx, _ = k_cos_nn(p_embed, candidate_embeddings, n)
     return candidates[nearest_idx]
@@ -46,6 +46,8 @@ Returns cosine similarity between torch vectors v, s along dimension 1
 '''
 def cosine_sim(v, s):
     cos = nn.CosineSimilarity(dim=1, eps=1e-6)
+    print(v)
+    print(s)
     return cos(v, s)
 
 '''
